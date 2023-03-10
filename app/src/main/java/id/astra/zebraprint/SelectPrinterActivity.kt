@@ -14,7 +14,9 @@ import android.os.Looper
 import android.util.Log
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.view.isVisible
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.afollestad.materialdialogs.MaterialDialog
 import com.zebra.sdk.comm.ConnectionException
 import com.zebra.sdk.printer.discovery.BluetoothDiscoverer
 import com.zebra.sdk.printer.discovery.DeviceFilter
@@ -22,6 +24,9 @@ import com.zebra.sdk.printer.discovery.DiscoveredPrinter
 import com.zebra.sdk.printer.discovery.DiscoveredPrinterBluetooth
 import com.zebra.sdk.printer.discovery.DiscoveryHandler
 import id.astra.zebraprint.databinding.ActivitySelectPrinterBinding
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 class SelectPrinterActivity : AppCompatActivity(), DiscoveryHandler {
     lateinit var binding: ActivitySelectPrinterBinding
@@ -68,6 +73,9 @@ class SelectPrinterActivity : AppCompatActivity(), DiscoveryHandler {
             setResult(Activity.RESULT_CANCELED)
             finish()
         }
+        binding.btnRetry.setOnClickListener{
+            discoveredDevice()
+        }
         onBackPressedDispatcher.addCallback(object : OnBackPressedCallback(true){
             override fun handleOnBackPressed() {
                 setResult(Activity.RESULT_CANCELED)
@@ -83,7 +91,8 @@ class SelectPrinterActivity : AppCompatActivity(), DiscoveryHandler {
             list.clear()
             if (permissionGranted) {
                 if (isBluetoothEnable()) {
-                    showLoading()
+                    showLoadingBar()
+                    binding.notfoundPrinter.isVisible = false
                     BluetoothDiscoverer.findPrinters(this, this, DeviceFilter { true })
                 } else {
                     requestEnableBluetooth.launch(Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE))
@@ -123,7 +132,7 @@ class SelectPrinterActivity : AppCompatActivity(), DiscoveryHandler {
 
     override fun discoveryFinished() {
         Log.e("NOTIFY FINISH", "Finish")
-        hideLoading()
+        hideLoadingBar()
         if (list.isNotEmpty()){
             printerAdapter = AdapterPrinterDevice(list.map { it as DiscoveredPrinterBluetooth })
             binding.rclvPrinter.apply {
@@ -138,6 +147,7 @@ class SelectPrinterActivity : AppCompatActivity(), DiscoveryHandler {
                 finish()
             }
         }else{
+            binding.notfoundPrinter.isVisible = true
             showToast("Cloud not find printer")
         }
     }
@@ -145,5 +155,13 @@ class SelectPrinterActivity : AppCompatActivity(), DiscoveryHandler {
     override fun discoveryError(message: String?) {
         Log.e(" notify error", message.toString())
         showToast(message.toString())
+    }
+
+    fun showLoadingBar(){
+        binding.loadingBar.show()
+    }
+
+    fun hideLoadingBar(){
+        binding.loadingBar.hide()
     }
 }

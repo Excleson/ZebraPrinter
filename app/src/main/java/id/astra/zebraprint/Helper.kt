@@ -1,68 +1,79 @@
 package id.astra.zebraprint
 
-import android.R.attr.src
+import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothManager
 import android.content.ContentValues
 import android.content.Context
 import android.graphics.*
-import android.graphics.drawable.ColorDrawable
 import android.graphics.pdf.PdfRenderer
 import android.net.Uri
-import android.os.*
+import android.os.Build
+import android.os.Environment
+import android.os.ParcelFileDescriptor
 import android.provider.MediaStore
 import android.util.Log
-import android.view.Gravity
-import android.view.LayoutInflater
-import android.view.WindowManager
 import android.widget.Toast
-import androidx.appcompat.app.AlertDialog
+import com.afollestad.materialdialogs.MaterialDialog
 import com.zebra.sdk.comm.Connection
 import com.zebra.sdk.comm.ConnectionException
 import com.zebra.sdk.printer.SGD
-import id.astra.zebraprint.databinding.LoadingDialogBinding
-import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.*
 
 
-var loadingDialog: AlertDialog? = null
+var loadingDialog: MaterialDialog? = null
 
-fun Context.showLoading(isCancelable:Boolean = false){
-    val binding = LoadingDialogBinding.inflate(LayoutInflater.from(this), null, false)
-    loadingDialog = AlertDialog.Builder(this, R.style.DialogRounded)
-        .setCancelable(isCancelable)
-        .setView(binding.root)
-        .create()
+var loadingProgressDialog : MaterialDialog? = null
 
-    loadingDialog?.let { alert->
-        if (!alert.isShowing){
-            Handler(Looper.getMainLooper()).post {
-                alert.show()
-                WindowManager.LayoutParams().also {
-                    it.height = resources.getDimensionPixelSize(R.dimen.dimen_60dp) + resources.getDimensionPixelSize(R.dimen.dimen_16dp)
-                    it.width = resources.getDimensionPixelSize(R.dimen.dimen_60dp) + resources.getDimensionPixelSize(R.dimen.dimen_16dp)
-                    alert.window?.apply {
-                        attributes = it
-                        setGravity(Gravity.CENTER)
-                        setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
-                    }
-                }
+fun Context.showLoading(messsage:String = "Loading..."){
+    CoroutineScope(Dispatchers.Main).launch{
+        loadingDialog = MaterialDialog.Builder(this@showLoading)
+            .progress(true,0)
+            .content(messsage)
+            .cancelable(false)
+            .build()
+        loadingDialog?.show()
+    }
+}
+
+fun Context.showLoadingProgress(message:String){
+    CoroutineScope(Dispatchers.Main).launch{
+        loadingProgressDialog = MaterialDialog.Builder(this@showLoadingProgress)
+            .content(message)
+            .cancelable(false)
+            .build()
+
+        loadingProgressDialog?.show()
+    }
+}
+fun hideLoadingProgress(){
+    CoroutineScope(Dispatchers.Main).launch{
+        delay(500)
+        loadingProgressDialog?.dismiss()
+    }
+}
+fun setLoadingProgress(progress:Int){
+    CoroutineScope(Dispatchers.Main).launch{
+        loadingProgressDialog?.setProgress(progress)
+    }
+}
+
+fun hideLoading(){
+    CoroutineScope(Dispatchers.Main).launch {
+        loadingDialog?.let {
+            if (it.isShowing){
+                it.dismiss()
             }
         }
     }
 }
 
-fun hideLoading(){
-    loadingDialog?.let {
-        if (it.isShowing){
-            it.dismiss()
-        }
-    }
-}
-
 fun Context.showToast(message:String){
-    MainScope().launch {
+    CoroutineScope(Dispatchers.Main).launch {
         Toast.makeText(this@showToast, message, Toast.LENGTH_SHORT).show()
     }
 }
