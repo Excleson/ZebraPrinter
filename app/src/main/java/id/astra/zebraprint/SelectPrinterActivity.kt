@@ -1,5 +1,6 @@
 package id.astra.zebraprint
 
+import android.annotation.SuppressLint
 import android.app.Activity
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothManager
@@ -77,8 +78,6 @@ class SelectPrinterActivity : AppCompatActivity(), DiscoveryHandler {
 
     }
 
-
-
     fun discoveredDevice() {
         try {
             list.clear()
@@ -103,18 +102,7 @@ class SelectPrinterActivity : AppCompatActivity(), DiscoveryHandler {
         }
     }
 
-    private fun isBluetoothEnable(): Boolean {
-        val bluetoothManager: BluetoothManager = getSystemService(BluetoothManager::class.java)
-        val bluetoothAdapter: BluetoothAdapter? = bluetoothManager.adapter
-        if (bluetoothAdapter == null) {
-            showToast("This device not support bluetooth")
-            return false
-        } else {
-            return bluetoothAdapter.isEnabled
-        }
-    }
-
-    fun requestPermission() {
+    private fun requestPermission() {
         val permissions = mutableListOf(
             android.Manifest.permission.ACCESS_FINE_LOCATION,
             android.Manifest.permission.BLUETOOTH
@@ -129,27 +117,18 @@ class SelectPrinterActivity : AppCompatActivity(), DiscoveryHandler {
     override fun foundPrinter(printer: DiscoveredPrinter?) {
         if (printer != null) {
             list.add(printer)
-            Log.e(" notify data set", "$printer")
-//            adapter.notifyDataSetChanged()
-        } else {
-//            Helpers.showDialogWithMessage(
-//                this, getString(R.string.alert),
-//                getString(R.string.printer_not_found),
-//                getString(R.string.close),
-//                MaterialDialog.SingleButtonCallback { dialog, which -> dialog.dismiss() }, true
-//            )
+            Log.e("NOTIFY PRINTER FOUND", "$printer")
         }
     }
 
     override fun discoveryFinished() {
-        Log.e(" notify finish", "Finish")
+        Log.e("NOTIFY FINISH", "Finish")
         hideLoading()
         if (list.isNotEmpty()){
             printerAdapter = AdapterPrinterDevice(list.map { it as DiscoveredPrinterBluetooth })
             binding.rclvPrinter.apply {
                 adapter = printerAdapter
-                layoutManager =
-                    LinearLayoutManager(this@SelectPrinterActivity, LinearLayoutManager.VERTICAL, false)
+                layoutManager = LinearLayoutManager(this@SelectPrinterActivity, LinearLayoutManager.VERTICAL, false)
                 setHasFixedSize(true)
             }
             printerAdapter.onPrinterSelected {
@@ -165,16 +144,6 @@ class SelectPrinterActivity : AppCompatActivity(), DiscoveryHandler {
 
     override fun discoveryError(message: String?) {
         Log.e(" notify error", message.toString())
-
-//        if (!TextUtils.isEmpty(message)) {
-//            Helpers.showDialogWithMessage(
-//                this,
-//                getString(R.string.alert),
-//                message!!,
-//                getString(R.string.close),
-//                MaterialDialog.SingleButtonCallback { dialog, which -> dialog.dismiss() },
-//                true
-//            )
-//        }
+        showToast(message.toString())
     }
 }
