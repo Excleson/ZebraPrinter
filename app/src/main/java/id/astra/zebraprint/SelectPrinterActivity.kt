@@ -103,11 +103,8 @@ class SelectPrinterActivity : AppCompatActivity(), DiscoveryHandler {
             }
         } catch (e: ConnectionException) {
             Log.d("catch discover", "com")
-            hideLoading()
+            hideLoadingBar()
             showToast(e.message.toString())
-        } finally {
-            Log.d("finally discover", "com")
-            hideLoading()
         }
     }
 
