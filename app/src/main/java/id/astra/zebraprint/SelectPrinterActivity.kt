@@ -1,5 +1,6 @@
 package id.astra.zebraprint
 
+import android.annotation.SuppressLint
 import android.app.Activity
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothManager
@@ -13,7 +14,9 @@ import android.os.Looper
 import android.util.Log
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.view.isVisible
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.afollestad.materialdialogs.MaterialDialog
 import com.zebra.sdk.comm.ConnectionException
 import com.zebra.sdk.printer.discovery.BluetoothDiscoverer
 import com.zebra.sdk.printer.discovery.DeviceFilter
@@ -21,6 +24,9 @@ import com.zebra.sdk.printer.discovery.DiscoveredPrinter
 import com.zebra.sdk.printer.discovery.DiscoveredPrinterBluetooth
 import com.zebra.sdk.printer.discovery.DiscoveryHandler
 import id.astra.zebraprint.databinding.ActivitySelectPrinterBinding
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 class SelectPrinterActivity : AppCompatActivity(), DiscoveryHandler {
     lateinit var binding: ActivitySelectPrinterBinding
@@ -67,6 +73,9 @@ class SelectPrinterActivity : AppCompatActivity(), DiscoveryHandler {
             setResult(Activity.RESULT_CANCELED)
             finish()
         }
+        binding.btnRetry.setOnClickListener{
+            discoveredDevice()
+        }
         onBackPressedDispatcher.addCallback(object : OnBackPressedCallback(true){
             override fun handleOnBackPressed() {
                 setResult(Activity.RESULT_CANCELED)
@@ -77,14 +86,13 @@ class SelectPrinterActivity : AppCompatActivity(), DiscoveryHandler {
 
     }
 
-
-
     fun discoveredDevice() {
         try {
             list.clear()
             if (permissionGranted) {
                 if (isBluetoothEnable()) {
-                    showLoading()
+                    showLoadingBar()
+                    binding.notfoundPrinter.isVisible = false
                     BluetoothDiscoverer.findPrinters(this, this, DeviceFilter { true })
                 } else {
                     requestEnableBluetooth.launch(Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE))
@@ -95,26 +103,12 @@ class SelectPrinterActivity : AppCompatActivity(), DiscoveryHandler {
             }
         } catch (e: ConnectionException) {
             Log.d("catch discover", "com")
-            hideLoading()
+            hideLoadingBar()
             showToast(e.message.toString())
-        } finally {
-            Log.d("finally discover", "com")
-            hideLoading()
         }
     }
 
-    private fun isBluetoothEnable(): Boolean {
-        val bluetoothManager: BluetoothManager = getSystemService(BluetoothManager::class.java)
-        val bluetoothAdapter: BluetoothAdapter? = bluetoothManager.adapter
-        if (bluetoothAdapter == null) {
-            showToast("This device not support bluetooth")
-            return false
-        } else {
-            return bluetoothAdapter.isEnabled
-        }
-    }
-
-    fun requestPermission() {
+    private fun requestPermission() {
         val permissions = mutableListOf(
             android.Manifest.permission.ACCESS_FINE_LOCATION,
             android.Manifest.permission.BLUETOOTH
@@ -129,27 +123,18 @@ class SelectPrinterActivity : AppCompatActivity(), DiscoveryHandler {
     override fun foundPrinter(printer: DiscoveredPrinter?) {
         if (printer != null) {
             list.add(printer)
-            Log.e(" notify data set", "$printer")
-//            adapter.notifyDataSetChanged()
-        } else {
-//            Helpers.showDialogWithMessage(
-//                this, getString(R.string.alert),
-//                getString(R.string.printer_not_found),
-//                getString(R.string.close),
-//                MaterialDialog.SingleButtonCallback { dialog, which -> dialog.dismiss() }, true
-//            )
+            Log.e("NOTIFY PRINTER FOUND", "$printer")
         }
     }
 
     override fun discoveryFinished() {
-        Log.e(" notify finish", "Finish")
-        hideLoading()
+        Log.e("NOTIFY FINISH", "Finish")
+        hideLoadingBar()
         if (list.isNotEmpty()){
             printerAdapter = AdapterPrinterDevice(list.map { it as DiscoveredPrinterBluetooth })
             binding.rclvPrinter.apply {
                 adapter = printerAdapter
-                layoutManager =
-                    LinearLayoutManager(this@SelectPrinterActivity, LinearLayoutManager.VERTICAL, false)
+                layoutManager = LinearLayoutManager(this@SelectPrinterActivity, LinearLayoutManager.VERTICAL, false)
                 setHasFixedSize(true)
             }
             printerAdapter.onPrinterSelected {
@@ -159,22 +144,21 @@ class SelectPrinterActivity : AppCompatActivity(), DiscoveryHandler {
                 finish()
             }
         }else{
+            binding.notfoundPrinter.isVisible = true
             showToast("Cloud not find printer")
         }
     }
 
     override fun discoveryError(message: String?) {
         Log.e(" notify error", message.toString())
+        showToast(message.toString())
+    }
 
-//        if (!TextUtils.isEmpty(message)) {
-//            Helpers.showDialogWithMessage(
-//                this,
-//                getString(R.string.alert),
-//                message!!,
-//                getString(R.string.close),
-//                MaterialDialog.SingleButtonCallback { dialog, which -> dialog.dismiss() },
-//                true
-//            )
-//        }
+    fun showLoadingBar(){
+        binding.loadingBar.show()
+    }
+
+    fun hideLoadingBar(){
+        binding.loadingBar.hide()
     }
 }
