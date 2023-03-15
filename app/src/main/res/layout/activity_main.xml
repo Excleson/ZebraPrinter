@@ -55,10 +55,12 @@
     <com.github.barteksc.pdfviewer.PDFView
         android:id="@+id/pdfViewer"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
+        android:layout_height="541dp"
         android:layout_marginHorizontal="@dimen/dimen_16dp"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/tvPrinterAddress" />
+        app:layout_constraintTop_toBottomOf="@id/tvPrinterAddress"
+        app:layout_constraintVertical_bias="0.044"
+        tools:layout_editor_absoluteX="1dp" />
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/openPdf"
@@ -72,16 +74,20 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:tint="@color/white" />
 
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
+    <com.google.android.material.button.MaterialButton
         android:id="@+id/btnPrint"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
         android:layout_margin="16dp"
-        android:src="@drawable/ic_print"
+        android:text="Print"
         app:backgroundTint="?attr/colorPrimary"
         app:fabSize="normal"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="1.0"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/pdfViewer"
+        app:layout_constraintVertical_bias="1.0"
         app:tint="@color/white" />
 
 

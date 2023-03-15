@@ -327,6 +327,7 @@ class MainActivity : AppCompatActivity() {
 
             // Verify Printer Status is Ready
             val printerStatus = printer.currentStatus
+
             if (printerStatus.isReadyToPrint) {
                 // Send the data to printer as a byte array.
                 hideLoading()
