@@ -2,8 +2,8 @@
     <!-- Base application theme. -->
     <style name="Theme.ZebraPrint" parent="Theme.MaterialComponents.Light.NoActionBar">
         <!-- Primary brand color. -->
-        <item name="colorPrimary">#4281EA</item>
-        <item name="colorPrimaryVariant">@color/purple_700</item>
+        <item name="colorPrimary">#FF1100</item>
+        <item name="colorPrimaryVariant">#FF1100</item>
         <item name="colorOnPrimary">@color/white</item>
         <!-- Secondary brand color. -->
         <item name="colorSecondary">@color/teal_200</item>

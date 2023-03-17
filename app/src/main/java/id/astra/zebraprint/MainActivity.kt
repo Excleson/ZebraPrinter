@@ -5,9 +5,11 @@ package id.astra.zebraprint
 import Const.DEVICE_NAME
 import Const.MAC_ADDRESS
 import android.app.Activity
+import android.app.AlertDialog
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothManager
 import android.content.Context
+import android.content.DialogInterface
 import android.content.Intent
 import android.content.SharedPreferences
 import android.graphics.*
@@ -16,8 +18,10 @@ import android.net.Uri
 import android.os.*
 import android.util.Log
 import android.view.View
+import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.net.toUri
 import androidx.core.util.rangeTo
 import com.zebra.sdk.comm.BluetoothConnection
 import com.zebra.sdk.comm.Connection
@@ -29,11 +33,13 @@ import com.zebra.sdk.printer.SGD
 import com.zebra.sdk.printer.ZebraPrinterFactory
 import id.astra.zebraprint.databinding.ActivityMainBinding
 import kotlinx.coroutines.*
+import org.json.*
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
 import java.io.InputStream
 import kotlin.coroutines.CoroutineContext
+import kotlin.math.log
 import kotlin.math.roundToInt
 
 class MainActivity : AppCompatActivity() {
@@ -42,6 +48,7 @@ class MainActivity : AppCompatActivity() {
     lateinit var preferences: SharedPreferences
     val TAG = this::class.java.simpleName
     var pdfUri: Uri? = null
+    var sourcePage: String? = null
     var permissionGranted = false
     var requestPermission =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
@@ -95,7 +102,14 @@ class MainActivity : AppCompatActivity() {
         Log.wtf("DATA", intent.data.toString())
         Log.wtf("ACTION", intent.action.toString())
         Log.wtf("TYPE", intent.type.toString())
+
         if (intent.action == Intent.ACTION_SEND) {
+            //val jsonParam = JSONTokener(intent.extras.toString()).nextValue() as JSONObject
+            //val uri = jsonParam.getString("uri").toUri()
+            //val source = jsonParam.getString("source")
+            Log.wtf("extra",intent.extras.toString())
+            sourcePage =  intent.getStringExtra("src")
+
             binding.pdfViewer.fromUri(intent.data)
                 .enableAntialiasing(true)
                 .enableDoubletap(false)
@@ -183,9 +197,29 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun printPdf(pdfFile: File) {
-        val address = preferences.getString(MAC_ADDRESS, null)
-        address?.let { address ->
-            connectToPrinterPdf(address, pdfFile)
+        Log.wtf("source",sourcePage)
+        if(sourcePage!=null && sourcePage == "pkb"){
+            hideLoading()
+            val alertDialogBuilder = AlertDialog.Builder(this)
+            alertDialogBuilder.setTitle("Release and Print PKB")
+            alertDialogBuilder.setMessage("Apakah anda yakin data PKB yang diinputkan sudah benar?")
+            alertDialogBuilder.setPositiveButton("ya",DialogInterface.OnClickListener{dialogInterface, i ->
+                showLoading()
+                val address = preferences.getString(MAC_ADDRESS, null)
+                address?.let { address ->
+                    connectToPrinterPdf(address, pdfFile)
+                }
+
+            })
+            alertDialogBuilder.setNegativeButton("tidak",DialogInterface.OnClickListener{dialogInterface, i ->
+                finish()
+            })
+            alertDialogBuilder.show()
+        }else{
+            val address = preferences.getString(MAC_ADDRESS, null)
+            address?.let { address ->
+                connectToPrinterPdf(address, pdfFile)
+            }
         }
     }
 
@@ -323,7 +357,7 @@ class MainActivity : AppCompatActivity() {
         }
         val scope = CoroutineScope(Dispatchers.IO + errorHandler)
         scope.launch {
-            val printer = ZebraPrinterFactory.getInstance(mPrinterConnection);
+            val printer = ZebraPrinterFactory.getInstance(mPrinterConnection)
 
             // Verify Printer Status is Ready
             val printerStatus = printer.currentStatus

@@ -55,11 +55,11 @@
     <com.github.barteksc.pdfviewer.PDFView
         android:id="@+id/pdfViewer"
         android:layout_width="match_parent"
-        android:layout_height="541dp"
+        android:layout_height="0dp"
         android:layout_marginHorizontal="@dimen/dimen_16dp"
-        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/btnPrint"
         app:layout_constraintTop_toBottomOf="@id/tvPrinterAddress"
-        app:layout_constraintVertical_bias="0.044"
+        app:layout_constraintVertical_bias="0"
         tools:layout_editor_absoluteX="1dp" />
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
@@ -75,10 +75,11 @@
         app:tint="@color/white" />
 
     <com.google.android.material.button.MaterialButton
+
         android:id="@+id/btnPrint"
         android:layout_width="0dp"
-        android:layout_height="0dp"
-        android:layout_margin="16dp"
+        android:layout_height="60dp"
+        android:layout_margin="0dp"
         android:text="Print"
         app:backgroundTint="?attr/colorPrimary"
         app:fabSize="normal"
