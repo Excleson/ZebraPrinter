@@ -3,4 +3,8 @@
     <string name="text_change_printer">Change Printer</string>
     <string name="text_not_availabe">Not Available</string>
     <string name="text_select_printer">Select Printer</string>
+    <string name="positive">Ya</string>
+    <string name="negative">Tidak</string>
+    <string name="text_print">Print</string>
+    <string name="text_open_pdf">Open Pdf</string>
 </resources>
