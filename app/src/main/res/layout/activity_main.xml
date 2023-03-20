@@ -46,7 +46,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginEnd="@dimen/dimen_16dp"
-        android:text="Change Printer"
+        android:text="@string/text_change_printer"
         android:textAllCaps="false"
         app:layout_constraintBottom_toBottomOf="@id/tvPrinterAddress"
         app:layout_constraintEnd_toEndOf="parent"
@@ -63,6 +63,7 @@
         tools:layout_editor_absoluteX="1dp" />
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:contentDescription="@string/text_open_pdf"
         android:id="@+id/openPdf"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -75,12 +76,11 @@
         app:tint="@color/white" />
 
     <com.google.android.material.button.MaterialButton
-
         android:id="@+id/btnPrint"
         android:layout_width="0dp"
         android:layout_height="60dp"
         android:layout_margin="0dp"
-        android:text="Print"
+        android:text="@string/text_print"
         app:backgroundTint="?attr/colorPrimary"
         app:fabSize="normal"
         app:layout_constraintBottom_toBottomOf="parent"

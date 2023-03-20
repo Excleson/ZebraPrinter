@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="pkb_con_title">Release dan Print PKB?</string>
+    <string name="pkb_con_text">Apakah anda yakin PKB yang diinputkan sudah benar?</string>
+</resources>

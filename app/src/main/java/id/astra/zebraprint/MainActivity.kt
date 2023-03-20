@@ -5,44 +5,28 @@ package id.astra.zebraprint
 import Const.DEVICE_NAME
 import Const.MAC_ADDRESS
 import android.app.Activity
-import android.app.AlertDialog
 import android.bluetooth.BluetoothAdapter
-import android.bluetooth.BluetoothManager
-import android.content.Context
-import android.content.DialogInterface
 import android.content.Intent
 import android.content.SharedPreferences
 import android.graphics.*
-import android.graphics.pdf.PdfRenderer
 import android.net.Uri
 import android.os.*
 import android.util.Log
 import android.view.View
-import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.net.toUri
-import androidx.core.util.rangeTo
 import com.zebra.sdk.comm.BluetoothConnection
 import com.zebra.sdk.comm.Connection
-import com.zebra.sdk.comm.ConnectionException
-import com.zebra.sdk.device.ProgressMonitor
 import com.zebra.sdk.graphics.internal.ZebraImageAndroid
-import com.zebra.sdk.printer.PrinterLanguage
 import com.zebra.sdk.printer.SGD
 import com.zebra.sdk.printer.ZebraPrinterFactory
 import id.astra.zebraprint.databinding.ActivityMainBinding
 import kotlinx.coroutines.*
 import org.json.*
-import java.io.ByteArrayOutputStream
 import java.io.File
-import java.io.FileOutputStream
-import java.io.InputStream
-import kotlin.coroutines.CoroutineContext
-import kotlin.math.log
 import kotlin.math.roundToInt
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : AppCompatActivity(),ConfirmationPopUp.ConfirmationListener {
 
     lateinit var binding: ActivityMainBinding
     lateinit var preferences: SharedPreferences
@@ -50,6 +34,9 @@ class MainActivity : AppCompatActivity() {
     var pdfUri: Uri? = null
     var sourcePage: String? = null
     var permissionGranted = false
+
+    private val resultIntent = Intent()
+
     var requestPermission =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
             permissionGranted = !it.containsValue(false)
@@ -88,6 +75,21 @@ class MainActivity : AppCompatActivity() {
 
     }
 
+    override fun onConfirmDialog(retVal: Boolean) {
+        if(retVal){
+            showLoading()
+            val address = preferences.getString(MAC_ADDRESS, null)
+            address?.let { addr ->
+                getFileFromUri(pdfUri)?.let {
+                    connectToPrinterPdf(addr, it)
+                }
+            }
+        }else{
+            setResult(RESULT_CANCELED, resultIntent)
+            finish()
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
@@ -107,9 +109,8 @@ class MainActivity : AppCompatActivity() {
             //val jsonParam = JSONTokener(intent.extras.toString()).nextValue() as JSONObject
             //val uri = jsonParam.getString("uri").toUri()
             //val source = jsonParam.getString("source")
-            Log.wtf("extra",intent.extras.toString())
             sourcePage =  intent.getStringExtra("src")
-
+            Log.wtf("extra",sourcePage)
             binding.pdfViewer.fromUri(intent.data)
                 .enableAntialiasing(true)
                 .enableDoubletap(false)
@@ -197,28 +198,15 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun printPdf(pdfFile: File) {
-        Log.wtf("source",sourcePage)
+        Log.wtf("src",sourcePage)
         if(sourcePage!=null && sourcePage == "pkb"){
             hideLoading()
-            val alertDialogBuilder = AlertDialog.Builder(this)
-            alertDialogBuilder.setTitle("Release and Print PKB")
-            alertDialogBuilder.setMessage("Apakah anda yakin data PKB yang diinputkan sudah benar?")
-            alertDialogBuilder.setPositiveButton("ya",DialogInterface.OnClickListener{dialogInterface, i ->
-                showLoading()
-                val address = preferences.getString(MAC_ADDRESS, null)
-                address?.let { address ->
-                    connectToPrinterPdf(address, pdfFile)
-                }
-
-            })
-            alertDialogBuilder.setNegativeButton("tidak",DialogInterface.OnClickListener{dialogInterface, i ->
-                finish()
-            })
-            alertDialogBuilder.show()
+            ConfirmationPopUp.newInstance(getString(R.string.pkb_con_title),getString(R.string.pkb_con_text))
+                .show(supportFragmentManager,"Confirmation")
         }else{
             val address = preferences.getString(MAC_ADDRESS, null)
-            address?.let { address ->
-                connectToPrinterPdf(address, pdfFile)
+            address?.let { addr ->
+                connectToPrinterPdf(addr, pdfFile)
             }
         }
     }
@@ -269,6 +257,8 @@ class MainActivity : AppCompatActivity() {
             if (printerStatus.isReadyToPrint) {
                 val bitmap = pdfToBitmap(pdfFile)
                 printer.printImage(ZebraImageAndroid(bitmap), 0, 0, -1, -1, false)
+
+                setResult(RESULT_OK, resultIntent)
             } else {
                 hideLoading()
                 binding.btnPrint.isEnable(true)
@@ -285,14 +275,18 @@ class MainActivity : AppCompatActivity() {
                     Log.e(TAG, "Unknown error occurred")
                     showToast("Unknown error occurred")
                 }
+                setResult(RESULT_CANCELED,resultIntent)
+
             }
             // Make sure the data got to the printer before closing the connection
             // Thread.sleep(500)
             delay(500)
             binding.btnPrint.isEnable(true)
-            hideLoading()
+
             connection.close()
             pdfFile.delete()
+            hideLoading()
+            finish()
         }
         /*try {
             Looper.prepare()
@@ -373,6 +367,8 @@ class MainActivity : AppCompatActivity() {
                     if (progress == 100) {
                         hideLoadingProgress()
                         showToast("Print finish")
+                        setResult(RESULT_OK, resultIntent)
+                        finish()
                     }
                 }
 
@@ -392,6 +388,7 @@ class MainActivity : AppCompatActivity() {
                     Log.e(TAG, "Unknown error occurred")
                     showToast("Unknown error occurred")
                 }
+                setResult(RESULT_CANCELED, resultIntent)
             }
             // Make sure the data got to the printer before closing the connection
             // Thread.sleep(500)
@@ -400,6 +397,7 @@ class MainActivity : AppCompatActivity() {
             hideLoading()
             mPrinterConnection.close()
             pdfFile.delete()
+            finish()
         }
 
         /*Looper.prepare()
