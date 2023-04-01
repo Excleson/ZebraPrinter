@@ -14,6 +14,7 @@ import android.os.*
 import android.util.Log
 import android.view.View
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import com.zebra.sdk.comm.BluetoothConnection
 import com.zebra.sdk.comm.Connection
@@ -25,6 +26,9 @@ import kotlinx.coroutines.*
 import org.json.*
 import java.io.File
 import kotlin.math.roundToInt
+import java.nio.charset.Charset
+import java.nio.file.Files
+import java.nio.file.Paths
 
 class MainActivity : AppCompatActivity(),ConfirmationPopUp.ConfirmationListener {
 
@@ -225,15 +229,11 @@ class MainActivity : AppCompatActivity(),ConfirmationPopUp.ConfirmationListener 
             val connection: Connection = BluetoothConnection(mPrinterToConnectToMACAddress)
             connection.open()
             // Verify Printer Supports PDF
-            if (isPrinterSupportsPDF(connection)) {
-                if (connection.isConnected) {
-                    printPdf(connection, pdfFile)
-                }
-            } else {
+
                 if (connection.isConnected) {
                     printPdfImage(connection, pdfFile)
                 }
-            }
+
         }
 
     }
@@ -249,13 +249,16 @@ class MainActivity : AppCompatActivity(),ConfirmationPopUp.ConfirmationListener 
 
         scope.launch {
             SGD.SET("apl.enable", "none", connection)
-            connection.write("! UTILITIES\r\nIN-MILLIMETERS\r\nSETFF 10 2\r\nPRINT\r\n".toByteArray())
+            //connection.write("! UTILITIES\r\nIN-MILLIMETERS\r\nSETFF 10 2\r\nPRINT\r\n".toByteArray())
+            connection.write("! U1 JOURNAL\r\n! U1 SETFF 50 2\r\n".toByteArray())
             val printer = ZebraPrinterFactory.getInstance(connection)
 
             // Verify Printer Status is Ready
             val printerStatus = printer.currentStatus
             if (printerStatus.isReadyToPrint) {
                 val bitmap = pdfToBitmap(pdfFile)
+                val h :Int = bitmap?.height!!
+                val w = bitmap?.width!!
                 printer.printImage(ZebraImageAndroid(bitmap), 0, 0, -1, -1, false)
 
                 setResult(RESULT_OK, resultIntent)
@@ -288,59 +291,9 @@ class MainActivity : AppCompatActivity(),ConfirmationPopUp.ConfirmationListener 
             hideLoading()
             finish()
         }
-        /*try {
-            Looper.prepare()
-            SGD.SET("apl.enable", "none", connection)
-            connection.write("! UTILITIES\r\nIN-MILLIMETERS\r\nSETFF 10 2\r\nPRINT\r\n".toByteArray());
-            // Get Instance of Printer
-            val printer = ZebraPrinterFactory.getInstance(PrinterLanguage.CPCL, connection)
-
-            // Verify Printer Status is Ready
-            val printerStatus = printer.currentStatus
-            if (printerStatus.isReadyToPrint) {
-                val bitmap = pdfToBitmap(pdfFile)
-                printer.printImage(ZebraImageAndroid(bitmap), 0, 0, -1, -1, false)
-
-                // Make sure the data got to the printer before closing the connection
-                Thread.sleep(500)
-            } else {
-                hideLoading()
-                binding.btnPrint.isEnable(true)
-                if (printerStatus.isPaused) {
-                    Log.e(TAG, "Printer paused")
-                    showToast("Print paused")
-                } else if (printerStatus.isHeadOpen) {
-                    Log.e(TAG, "Printer head open")
-                    showToast("Print head open")
-                } else if (printerStatus.isPaperOut) {
-                    Log.e(TAG, "Printer is out of paper")
-                    showToast("Print is out of paper")
-                } else {
-                    Log.e(TAG, "Unknown error occurred")
-                    showToast("Unknown error occurred")
-                }
-            }
-        } catch (e: ConnectionException) {
-            // Pass Error Up
-            Log.e(TAG, e.message.toString())
-            hideLoading()
-            binding.btnPrint.isEnable(true)
-            showToast(e.message.toString())
-        } finally {
-            try {
-                // Close Connections
-                Looper.myLooper()?.quit()
-                hideLoading()
-                binding.btnPrint.isEnable(true)
-                connection.close()
-                pdfFile.delete()
-            } catch (e: Exception) {
-                e.printStackTrace()
-                showToast(e.message.toString())
-            }
-        }*/
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
     fun printPdf(mPrinterConnection: Connection, pdfFile: File) {
 
         val errorHandler = CoroutineExceptionHandler { coroutineContext, e ->
@@ -351,6 +304,7 @@ class MainActivity : AppCompatActivity(),ConfirmationPopUp.ConfirmationListener 
         }
         val scope = CoroutineScope(Dispatchers.IO + errorHandler)
         scope.launch {
+            val path = pdfFile.absolutePath
             val printer = ZebraPrinterFactory.getInstance(mPrinterConnection)
 
             // Verify Printer Status is Ready
@@ -399,62 +353,6 @@ class MainActivity : AppCompatActivity(),ConfirmationPopUp.ConfirmationListener 
             pdfFile.delete()
             finish()
         }
-
-        /*Looper.prepare()
-        try {
-            // Get Instance of Printer
-            val printer = ZebraPrinterFactory.getInstance(mPrinterConnection);
-
-            // Verify Printer Status is Ready
-            val printerStatus = printer.currentStatus
-            if (printerStatus.isReadyToPrint) {
-                // Send the data to printer as a byte array.
-                printer.sendFileContents(pdfFile.absolutePath) { write, total ->
-                    val rawProgress = (write * 100 / total).toDouble()
-                    val progress = rawProgress.roundToInt()
-                    if (progress == 100) {
-                        hideLoading()
-                        showToast("Print finish")
-                    }
-                }
-                // Make sure the data got to the printer before closing the connection
-                Thread.sleep(500)
-            } else {
-                hideLoading()
-                binding.btnPrint.isEnable(true)
-                if (printerStatus.isPaused) {
-                    Log.e(TAG, "Printer paused")
-                    showToast("Print paused")
-                } else if (printerStatus.isHeadOpen) {
-                    Log.e(TAG, "Printer head open")
-                    showToast("Print head open")
-                } else if (printerStatus.isPaperOut) {
-                    Log.e(TAG, "Printer is out of paper")
-                    showToast("Print is out of paper")
-                } else {
-                    Log.e(TAG, "Unknown error occurred")
-                    showToast("Unknown error occurred")
-                }
-            }
-        } catch (e: ConnectionException) {
-            // Pass Error Up
-            Log.e(TAG, e.message.toString())
-            hideLoading()
-            binding.btnPrint.isEnable(true)
-            showToast(e.message.toString())
-        } finally {
-            try {
-                // Close Connections
-                Looper.myLooper()?.quit()
-                hideLoading()
-                binding.btnPrint.isEnable(true)
-                mPrinterConnection.close()
-                pdfFile.delete()
-            } catch (e: ConnectionException) {
-                e.printStackTrace()
-                showToast(e.message.toString())
-            }
-        }*/
     }
 
     fun View.isEnable(boolean: Boolean) {
