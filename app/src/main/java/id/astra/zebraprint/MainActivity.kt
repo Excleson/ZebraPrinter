@@ -188,11 +188,13 @@ class MainActivity : AppCompatActivity(),ConfirmationPopUp.ConfirmationListener 
     fun requestPermission() {
         val permissions = mutableListOf(
             android.Manifest.permission.ACCESS_FINE_LOCATION,
-            android.Manifest.permission.BLUETOOTH
+            android.Manifest.permission.BLUETOOTH,
+            android.Manifest.permission.BLUETOOTH_ADMIN
         )
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             permissions.add(android.Manifest.permission.BLUETOOTH_SCAN)
             permissions.add(android.Manifest.permission.BLUETOOTH_CONNECT)
+            permissions.add(android.Manifest.permission.BLUETOOTH_ADMIN)
         }
         requestPermission.launch(permissions.toTypedArray())
     }
@@ -255,10 +257,12 @@ class MainActivity : AppCompatActivity(),ConfirmationPopUp.ConfirmationListener 
 
             // Verify Printer Status is Ready
             val printerStatus = printer.currentStatus
+
             if (printerStatus.isReadyToPrint) {
                 val bitmap = pdfToBitmap(pdfFile)
                 val h :Int = bitmap?.height!!
                 val w = bitmap?.width!!
+                printerStatus.labelLengthInDots = h*203
                 printer.printImage(ZebraImageAndroid(bitmap), 0, 0, -1, -1, false)
 
                 setResult(RESULT_OK, resultIntent)
