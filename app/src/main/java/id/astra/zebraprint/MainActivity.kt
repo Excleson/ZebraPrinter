@@ -18,6 +18,8 @@ import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import com.zebra.sdk.comm.BluetoothConnection
 import com.zebra.sdk.comm.Connection
+import com.zebra.sdk.comm.ConnectionException
+import com.zebra.sdk.device.ProgressMonitor
 import com.zebra.sdk.graphics.internal.ZebraImageAndroid
 import com.zebra.sdk.printer.SGD
 import com.zebra.sdk.printer.ZebraPrinterFactory
@@ -105,16 +107,11 @@ class MainActivity : AppCompatActivity(),ConfirmationPopUp.ConfirmationListener 
     }
 
     private fun checkIntentData() {
-        Log.wtf("DATA", intent.data.toString())
-        Log.wtf("ACTION", intent.action.toString())
-        Log.wtf("TYPE", intent.type.toString())
-
         if (intent.action == Intent.ACTION_SEND) {
             //val jsonParam = JSONTokener(intent.extras.toString()).nextValue() as JSONObject
             //val uri = jsonParam.getString("uri").toUri()
             //val source = jsonParam.getString("source")
             sourcePage =  intent.getStringExtra("src")
-            Log.wtf("extra",sourcePage)
             binding.pdfViewer.fromUri(intent.data)
                 .enableAntialiasing(true)
                 .enableDoubletap(false)
@@ -204,7 +201,6 @@ class MainActivity : AppCompatActivity(),ConfirmationPopUp.ConfirmationListener 
     }
 
     fun printPdf(pdfFile: File) {
-        Log.wtf("src",sourcePage)
         if(sourcePage!=null && sourcePage == "pkb"){
             hideLoading()
             ConfirmationPopUp.newInstance(getString(R.string.pkb_con_title),getString(R.string.pkb_con_text))
@@ -231,13 +227,87 @@ class MainActivity : AppCompatActivity(),ConfirmationPopUp.ConfirmationListener 
             val connection: Connection = BluetoothConnection(mPrinterToConnectToMACAddress)
             connection.open()
             // Verify Printer Supports PDF
-
+            if (zebraPrinterSupportsPDF(connection)) {
+                if (connection.isConnected) {
+                    printPdfImage(connection, pdfFile)
+                    //sendPdfToPrinter(connection, pdfFile)
+                }
+            } else {
                 if (connection.isConnected) {
                     printPdfImage(connection, pdfFile)
                 }
-
+            }
         }
+    }
 
+    fun zebraPrinterSupportsPDF(connection: Connection): Boolean {
+        return try{
+            //Enable emulation pdf
+            SGD.SET("apl.enable","pdf", connection)
+            SGD.SET("ezpl.print_width","575",connection)
+            // Use SGD command to check if apl.enable returns "pdf"
+            val printerInfo: String = SGD.GET("apl.enable", connection)
+            Log.wtf("PDF ENABLE", printerInfo)
+            printerInfo == "pdf"
+        }catch (e: ConnectionException){
+            Log.wtf(TAG, e.message.toString())
+            showToast(e.message.toString())
+            false
+        }
+    }
+
+    fun sendPdfToPrinter(mPrinterConnection: Connection, pdfFile: File) {
+        Looper.prepare()
+        try {
+            // Get Instance of Printer
+            val printer = ZebraPrinterFactory.getInstance(mPrinterConnection);
+
+            // Verify Printer Status is Ready
+            val printerStatus = printer.currentStatus;
+            if (printerStatus.isReadyToPrint) {
+                // Send the data to printer as a byte array.
+                printer.sendFileContents(pdfFile.absolutePath, ProgressMonitor { write, total ->
+                    val rawProgress = (write * 100 / total).toDouble()
+                    val progress = rawProgress.roundToInt()
+                    if (progress == 100){
+                        hideLoading()
+                        showToast("Print finish")
+                    }
+                })
+
+                // Make sure the data got to the printer before closing the connection
+                Thread.sleep(500)
+            } else {
+                hideLoading()
+                binding.btnPrint.isEnable(true)
+                if (printerStatus.isPaused) {
+                    Log.e(TAG, "Printer paused")
+                } else if (printerStatus.isHeadOpen) {
+                    Log.e(TAG, "Printer head open")
+                } else if (printerStatus.isPaperOut) {
+                    Log.e(TAG, "Printer is out of paper")
+                } else {
+                    Log.e(TAG, "Unknown error occurred")
+                }
+            }
+        } catch (e: ConnectionException) {
+            // Pass Error Up
+            Log.e(TAG, e.message.toString())
+            hideLoading()
+            binding.btnPrint.isEnable(true)
+            showToast(e.message.toString())
+        } finally {
+            try {
+                // Close Connections
+                Looper.myLooper()?.quit()
+                hideLoading()
+                binding.btnPrint.isEnable(true)
+                mPrinterConnection.close()
+            } catch (e: ConnectionException) {
+                e.printStackTrace()
+                showToast(e.message.toString())
+            }
+        }
     }
 
     private fun printPdfImage(connection: Connection, pdfFile: File) {
@@ -251,17 +321,18 @@ class MainActivity : AppCompatActivity(),ConfirmationPopUp.ConfirmationListener 
 
         scope.launch {
             SGD.SET("apl.enable", "none", connection)
-            //connection.write("! UTILITIES\r\nIN-MILLIMETERS\r\nSETFF 10 2\r\nPRINT\r\n".toByteArray())
             connection.write("! U1 JOURNAL\r\n! U1 SETFF 50 2\r\n".toByteArray())
+
+            val bitmap = pdfToBitmap(pdfFile)
+            val h :Int = bitmap?.height!!
+
+            SGD.SET("zpl.label_length",h.toString(),connection)
             val printer = ZebraPrinterFactory.getInstance(connection)
 
             // Verify Printer Status is Ready
             val printerStatus = printer.currentStatus
 
             if (printerStatus.isReadyToPrint) {
-                val bitmap = pdfToBitmap(pdfFile)
-                val h :Int = bitmap?.height!!
-                val w = bitmap?.width!!
                 printerStatus.labelLengthInDots = h*203
                 printer.printImage(ZebraImageAndroid(bitmap), 0, 0, -1, -1, false)
 
@@ -366,6 +437,5 @@ class MainActivity : AppCompatActivity(),ConfirmationPopUp.ConfirmationListener 
             }
         }
     }
-
 
 }
